@@ -3,10 +3,11 @@
  * 常用元素操作组件
  */
  
-layui.define('jquery', function(exports){
+layui.define(['jquery', 'dropdown'], function(exports){
   'use strict';
   
   var $ = layui.$;
+  var dropdown = layui.dropdown;
   var hint = layui.hint();
   var device = layui.device();
   
@@ -121,6 +122,7 @@ layui.define('jquery', function(exports){
   var call = {
     // Tab 点击
     tabClick: function(obj){
+      console.log('cc');
       obj = obj || {};
       var options = obj.options || {};
       var othis = obj.liElem || $(this);
@@ -236,36 +238,38 @@ layui.define('jquery', function(exports){
             }
           });
         }
+        call.tabNoWrap(othis, spread);
+        //call.tabWrap(othis, spread);
         
-        if(typeof othis.attr('lay-unauto') === 'string') return;
+      //   if(typeof othis.attr('lay-unauto') === 'string') return;
         
-        // 响应式
-        if(
-          title.prop('scrollWidth') > title.outerWidth() + 1 || (
-            title.find('li').length && title.height() > function(height){
-              return height + height/2;
-            }(title.find('li').eq(0).height())
-          )
-        ){
-          // 若执行是来自于切换，则自动展开
-          (
-            spread === 'change' && title.data('LAY_TAB_CHANGE')
-          ) && title.addClass(MORE);
+      //   // 响应式
+      //   if(
+      //     title.prop('scrollWidth') > title.outerWidth() + 1 || (
+      //       title.find('li').length && title.height() > function(height){
+      //         return height + height/2;
+      //       }(title.find('li').eq(0).height())
+      //     )
+      //   ){
+      //     // 若执行是来自于切换，则自动展开
+      //     (
+      //       spread === 'change' && title.data('LAY_TAB_CHANGE')
+      //     ) && title.addClass(MORE);
           
-          if(title.find('.'+BAR)[0]) return;
-          title.append(span);
-          othis.attr('overflow', '');
+      //     if(title.find('.'+BAR)[0]) return;
+      //     title.append(span);
+      //     othis.attr('overflow', '');
 
-          // 展开图标事件
-          span.on('click', function(e){
-            var isSpread = title.hasClass(MORE);
-            title[isSpread ? 'removeClass' : 'addClass'](MORE);
-          });
-        } else {
-          title.find('.'+ BAR).remove();
-          othis.removeAttr('overflow');
-        }
-      });
+      //     // 展开图标事件
+      //     span.on('click', function(e){
+      //       var isSpread = title.hasClass(MORE);
+      //       title[isSpread ? 'removeClass' : 'addClass'](MORE);
+      //     });
+      //   } else {
+      //     title.find('.'+ BAR).remove();
+      //     othis.removeAttr('overflow');
+      //   }
+       });
     }
     // 隐藏更多 Tab
     ,hideTabMore: function(e){
@@ -273,6 +277,127 @@ layui.define('jquery', function(exports){
       if(e === true || $(e.target).attr('lay-stope') !== 'tabmore'){
         tsbTitle.removeClass('layui-tab-more');
         tsbTitle.find('.layui-tab-bar').attr('title','');
+      }
+    }
+    ,tabWrap: function(tabElem, spread){
+      var tabElem = tabElem;
+      if(typeof tabElem.attr('lay-unauto') === 'string') return;
+     
+      var BAR = 'layui-tab-bar';
+      var MORE = 'layui-tab-more';
+      var STOPE = 'lay-stope="tabmore"';
+      var titleElem = tabElem.children('.layui-tab-title');
+      var checkOverflow = function(titleElem){
+        if(titleElem.prop('scrollWidth') > titleElem.outerWidth() + 1) return true;
+        var titleItemsElem = titleElem.find('li');
+        if(titleItemsElem.length){
+          var titleFirstElHeight = titleItemsElem.eq(0).height();
+          return titleElem.height() > titleFirstElHeight + titleFirstElHeight/2;
+        }
+      }(titleElem);
+
+      if(checkOverflow){
+        // 若执行是来自于切换，则自动展开
+        if( spread === 'change' && titleElem.data('LAY_TAB_CHANGE')){
+          titleElem.addClass(MORE)
+        }
+        if(titleElem.find('.'+BAR)[0]) return;
+        var span = $('<span class="layui-unselect layui-tab-bar" '+ STOPE +'><i '+ STOPE +' class="layui-icon">&#xe61a;</i></span>');
+        titleElem.append(span);
+        tabElem.attr('overflow', '');
+
+        // 展开图标事件
+        span.on('click', function(e){
+          var isSpread = titleElem.hasClass(MORE);
+          titleElem[isSpread ? 'removeClass' : 'addClass'](MORE);
+        });
+      }else{
+        titleElem.find('.'+ BAR).remove();
+        tabElem.removeAttr('overflow');
+      }
+    }
+    ,tabNoWrap: function(tabElem, spread){
+      // TODO 不包裹剪切容器无法解决
+      var tabElem = tabElem;
+      if(typeof tabElem.attr('lay-unauto') === 'string') return;
+     
+      var BAR = 'layui-tab-bar';
+      var MORE = 'layui-tab-more-nowrap';
+      var STOPE = 'lay-stope="tabmore"';
+      var titleElem = tabElem.children('.layui-tab-title');
+      var checkOverflow = titleElem.prop('scrollWidth') > titleElem.outerWidth() + 1;
+
+      if(checkOverflow){
+        // 若执行是来自于切换，则自动展开
+        if( spread === 'change' && titleElem.data('LAY_TAB_CHANGE')){
+          titleElem.addClass(MORE)
+        }
+        if(titleElem.find('.'+BAR)[0]) return;
+        var span = $('<span class="layui-unselect layui-tab-bar" '+ STOPE +'><i '+ STOPE +' class="layui-icon">&#xe61a;</i></span>');
+        titleElem.append(span);
+        tabElem.attr('overflow', '');
+
+        titleElem.off('wheel').on('wheel', function(e){
+          e= e.originalEvent
+          var el = this;
+          e.preventDefault()
+          var direction = Math.abs(e.deltaX) >= Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+          var distance = 30 * (direction > 0 ? 1 : -1)
+          var l = el.scrollLeft
+          var offset = el.scrollLeft + distance
+          var s = titleElem.width()
+          el.scrollTo({
+            left: offset,
+          })
+          if(offset < 0) offset = 0;
+
+          var w = 0
+          titleElem.find('li').each(function(i,v){
+            w += $(v).outerWidth(true);
+          })
+
+          if((w - l <= s) && direction > 0) return;
+          span.css({transform: 'translateX('+ (offset) +'px)'})
+
+        })
+
+        // 展开图标事件
+        span.on('mouseenter', function(e){
+          // var isSpread = titleElem.hasClass(MORE);
+          // titleElem[isSpread ? 'removeClass' : 'addClass'](MORE);
+          var titleItemsElem = titleElem.find('li');
+          var d = $.map(titleItemsElem, function(el, i){
+            var liCloneEl = $(el).clone();
+            return {
+              id: String(i),
+              templet: liCloneEl.attr('lay-id', el.getAttribute('lay-id')).html()
+            }
+          })
+
+          dropdown.render({
+            id: 'lay-tab-more',
+            elem: span,
+            align: 'right',
+            //trigger: 'click',
+            style: 'overflow-y:auto;max-height:500px',
+            data: d,
+            ready: function(elemPanel, elem){
+              titleElem.addClass(MORE);
+            },
+            click: function(data, othis){
+              var index = othis.index();
+              var el = titleElem.find('li').eq(index);
+              el.trigger('click');
+              el[0].scrollIntoView()
+            },
+            close: function(){
+              titleElem.removeClass(MORE);
+            }
+          });
+        });
+      }else{
+        titleElem.find('.'+ BAR).remove();
+        tabElem.removeAttr('overflow');
       }
     }
     
