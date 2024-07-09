@@ -113,11 +113,25 @@ layui.use(['element', 'form'], function(){
   var element = layui.element;
   
   element.on('tab(test)', function(data){
-    console.log(this, data);
+    console.log('change', this, data);
+  });
+
+  element.on('tab(tabDemo)', function(data){
+    console.log('change', this, data);
   });
 
   element.on('tabDelete(tabDemo)', function(data){
-    console.log(this, data);
+    console.log('del',this, data);
+  });
+
+  element.on('tabBeforeDelete(tabDemo)', function(data){
+    console.log('beforeDel',this, data);
+  });
+
+  element.on('tabBeforeChange(tabDemo)', function(data){
+    console.log('beforeChange',this, data);
+
+    return data.id !== '3';
   });
   
 });

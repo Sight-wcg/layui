@@ -140,6 +140,13 @@ layui.define('jquery', function(exports){
       var index = 'index' in obj 
         ? obj.index 
       : othis.parent().children('li').index(othis);
+
+      var shouldChange = layui.event.call(this, MOD_NAME, 'tabBeforeChange('+ filter +')', {
+        elem: parents,
+        index: index,
+        id: hasId
+      });
+      if(shouldChange === false) return;
       
       // 执行切换
       if(!(isJump || unselect)){

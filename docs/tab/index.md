@@ -337,4 +337,28 @@ element.on('tabBeforeDelete(filter)', function(data){
 });
 ```
 
+<h3 id="on-tabBeforeChange" lay-toc="{level: 2}" class="ws-bold">tab 切换前的事件 <sup>2.9.15+</sup></h3>
+
+`element.on('tabBeforeChange(filter)', callback);`
+
+- 参数 `tabBeforeChange(filter)` 是一个特定结构。
+  - `tabBeforeChange` 为 tab 切换事件固定值；
+  - `filter` 为 tab 容器属性 `lay-filter` 对应的值。
+- 参数 `callback` 为事件执行时的回调函数，并返回一个 `object` 类型的参数。
+
+点击 tab 选项切换前触发。
+
+```
+var element = layui.element;
+ 
+// tab 切换前的事件
+element.on('tabBeforeChange(filter)', function(data){
+  console.log(data.index); // 得到被切换的 tab 项的所在下标
+  console.log(data.elem); // 得到当前的 tab 容器
+  console.log(data.id); // 得到被切换的 tab 项的 ID(2.9.11+)
+
+  return data.id !== '3'; // 返回 false 时阻止切换到对应的选项卡
+});
+```
+
 
