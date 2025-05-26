@@ -176,7 +176,7 @@
     ,showBottom: true //是否显示底部栏
     ,isPreview: true //是否显示值预览
     ,btns: ['clear', 'now', 'confirm'] //右下角显示的按钮，会按照数组顺序排列
-    ,lang: 'cn' //语言，只支持cn/en，即中文和英文
+    ,lang: 'cn' // 语言，只支持 cn/en，即中文和英文
     ,theme: 'default' //主题
     ,position: null //控件定位方式定位, 默认absolute，支持：fixed/absolute/static
     ,calendar: false //是否开启公历重要节日，仅支持中文版
@@ -189,51 +189,61 @@
     ,shade: 0
   };
 
-  //多语言
-  Class.prototype.lang = function(){
-    var that = this
-    ,options = that.config
-    ,text = {
+  // 多语言
+  Class.prototype.lang = function() {
+    var that = this;
+    var options = that.config;
+    var text = {
       cn: {
-        weeks: ['日', '一', '二', '三', '四', '五', '六']
-        ,time: ['时', '分', '秒']
-        ,timeTips: '选择时间'
-        ,startTime: '开始时间'
-        ,endTime: '结束时间'
-        ,dateTips: '返回日期'
-        ,month: ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二']
-        ,tools: {
-          confirm: '确定'
-          ,clear: '清空'
-          ,now: '现在'
-        }
-        ,timeout: '结束时间不能早于开始时间<br>请重新选择'
-        ,invalidDate: '不在有效日期或时间范围内'
-        ,formatError: ['日期格式不合法<br>必须遵循下述格式：<br>', '<br>已为你重置']
-        ,preview: '当前选中的结果'
-      }
-      ,en: {
-        weeks: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
-        ,time: ['Hours', 'Minutes', 'Seconds']
-        ,timeTips: 'Select Time'
-        ,startTime: 'Start Time'
-        ,endTime: 'End Time'
-        ,dateTips: 'Select Date'
-        ,month: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-        ,tools: {
-          confirm: 'Confirm'
-          ,clear: 'Clear'
-          ,now: 'Now'
-        }
-        ,timeout: 'End time cannot be less than start Time<br>Please re-select'
-        ,invalidDate: 'Invalid date'
-        ,formatError: ['The date format error<br>Must be followed：<br>', '<br>It has been reset']
-        ,preview: 'The selected result'
+        month: ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二'],
+        weeks: ['日', '一', '二', '三', '四', '五', '六'],
+        time: ['时', '分', '秒'],
+        selectTime: '选择时间',
+        startTime: '开始时间',
+        endTime: '结束时间',
+        selectDate: '返回日期',
+        tools: {
+          confirm: '确定',
+          clear: '清空',
+          now: '现在'
+        },
+        timeout: '结束时间不能早于开始时间<br>请重新选择',
+        invalidDate: '不在有效日期或时间范围内',
+        formatError: ['日期格式不合法<br>必须遵循下述格式：<br>', '<br>已为你重置'],
+        preview: '当前选中的结果'
+      },
+      en: {
+        month: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+        weeks: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
+        time: ['Hours', 'Minutes', 'Seconds'],
+        selectTime: 'Select Time',
+        startTime: 'Start Time',
+        endTime: 'End Time',
+        selectDate: 'Select Date',
+        tools: {
+          confirm: 'Confirm',
+          clear: 'Clear',
+          now: 'Now'
+        },
+        timeout: 'End time cannot be less than start Time<br>Please re-select',
+        invalidDate: 'Invalid date',
+        formatError: ['The date format error<br>Must be followed：<br>', '<br>It has been reset'],
+        preview: 'The selected result'
       }
     };
+
+    // 为了避免边缘情况，laydate 只提供「简体中文」和「英文」切换
+    if (isLayui) {
+      var locale = layui.i18n.config.locale;
+      if (options.lang === 'cn' && locale !== 'zh-CN') {
+        options.lang = 'en';
+      }
+    }
+
     return text[options.lang] || text['cn'];
   };
 
+  // 仅简体中文生效，不做国际化
   Class.prototype.markerOfChineseFestivals = {
     '0-1-1': '元旦',
     '0-2-14': '情人' ,
@@ -246,7 +256,7 @@
     '0-9-10': '教师',
     '0-10-1': '国庆',
     '0-12-25': '圣诞'
-  }
+  };
 
   // 重载实例
   Class.prototype.reload = function(options){
@@ -576,7 +586,7 @@
     lay(divFooter).html(function(){
       var html = [], btns = [];
       if(options.type === 'datetime'){
-        html.push('<span lay-type="datetime" class="'+ ELEM_TIME_BTN +'">'+ lang.timeTips +'</span>');
+        html.push('<span lay-type="datetime" class="'+ ELEM_TIME_BTN +'">'+ lang.selectTime +'</span>');
       }
       if(!(!options.range && options.type === 'datetime') || options.fullPanel){
         html.push('<span class="'+ ELEM_PREVIEW +'" title="'+ lang.preview +'"></span>')
@@ -1101,8 +1111,12 @@
       that.markRender(td, YMD, markers);
     }
 
-    if(options.calendar && options.lang === 'cn'){
-      render(that.markerOfChineseFestivals);
+    // chineseFestivals 仅简体中文生效
+    if (options.calendar) {
+      var isZhCN = isLayui ? layui.i18n.config.locale === 'zh-CN' : options.lang === 'cn';
+      if (isZhCN) {
+        render(that.markerOfChineseFestivals);
+      }
     }
 
     if(typeof options.mark === 'function'){
@@ -1518,9 +1532,10 @@
           that.list(options.type, 0).list(options.type, 1);
 
           //同步按钮可点状态
-          options.type === 'time' ? that.setBtnStatus('时间'
-            ,lay.extend({}, that.systemDate(), that.startTime)
-            ,lay.extend({}, that.systemDate(), that.endTime)
+          options.type === 'time' ? that.setBtnStatus(
+            true,
+            lay.extend({}, that.systemDate(), that.startTime),
+            lay.extend({}, that.systemDate(), that.endTime)
           ) : that.setBtnStatus(true);
         }
       } else {
@@ -1843,7 +1858,7 @@
       ,haveSpan = lay(elemHeader[2]).find('.'+ ELEM_TIME_TEXT);
 
       scroll();
-      span.innerHTML = options.range ? [lang.startTime,lang.endTime][index] : lang.timeTips;
+      span.innerHTML = options.range ? [lang.startTime,lang.endTime][index] : lang.selectTime;
       lay(that.elemMain[index]).addClass('laydate-time-show');
 
       if(haveSpan[0]) haveSpan.remove();
@@ -1928,10 +1943,10 @@
         ? elemBtn.addClass(DISABLED)
       : elemBtn[isOut ? 'addClass' : 'removeClass'](DISABLED);
 
-      //是否异常提示
-      if(tips && isOut) that.hint(
-        typeof tips === 'string' ? lang.timeout.replace(/日期/g, tips) : lang.timeout
-      );
+      // 是否异常提示
+      if (tips && isOut) {
+        that.hint(lang.timeout);
+      }
     }
   };
 
@@ -2320,13 +2335,13 @@
         if(lay(btn).hasClass(DISABLED)) return;
         that.list('time', 0);
         options.range && that.list('time', 1);
-        lay(btn).attr('lay-type', 'date').html(that.lang().dateTips);
+        lay(btn).attr('lay-type', 'date').html(that.lang().selectDate);
       }
 
       //选择日期
       ,date: function(){
         that.closeList();
-        lay(btn).attr('lay-type', 'datetime').html(that.lang().timeTips);
+        lay(btn).attr('lay-type', 'datetime').html(that.lang().selectTime);
       }
 
       //清空、重置
@@ -2739,8 +2754,8 @@
 
   //加载方式
   isLayui ? (
-    laydate.ready()
-    ,layui.define('lay', function(exports){ //layui 加载
+    laydate.ready(),
+    layui.define(['lay', 'i18n'], function(exports){ // layui 加载
       laydate.path = layui.cache.dir;
       ready.run(lay);
       exports(MOD_NAME, laydate);
