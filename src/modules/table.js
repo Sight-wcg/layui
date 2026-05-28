@@ -177,6 +177,213 @@ layui.define(
 
     var DATA_MOVE_NAME = 'LAY_TABLE_MOVE_DICT';
 
+    // sticky 固定列的内部默认配置，当前只启用合计行区域
+    var STICKY_COLS_OPTIONS = {
+      // 预留 header/main，方便未来将表头和主体固定列迁移为 sticky
+      areas: {
+        header: false,
+        main: false,
+        total: true
+      },
+      // 左固定列默认与现有固定列表现一致：即使未横向溢出也生效
+      left: true,
+      // 右固定列默认与现有固定列表现一致：仅横向溢出时生效
+      right: 'overflow'
+    };
+
+    // sticky 可作用的表格区域和对应容器选择器
+    var STICKY_COLS_AREAS = {
+      header: ELEM_HEADER,
+      main: ELEM_MAIN,
+      total: ELEM_TOTAL
+    };
+
+    // 不同区域对应的单元格标签，未启用 header 时不会生成 th 规则
+    var STICKY_COLS_AREA_TAGS = {
+      header: 'th',
+      main: 'td',
+      total: 'td'
+    };
+
+    // 给开启 sticky 的区域容器添加该类，再通过 data-key 命中具体列
+    var ELEM_HAS_STICKY = 'layui-table-has-sticky';
+
+    // 检测当前浏览器支持的 sticky 写法，不支持则跳过后续 sticky 逻辑
+    var stickyPosition = (function () {
+      var elem = document.createElement('div');
+      var values = ['sticky', '-webkit-sticky'];
+
+      for (var i = 0; i < values.length; i++) {
+        elem.style.position = values[i];
+        if (elem.style.position === values[i]) return values[i];
+      }
+      return false;
+    })();
+
+    // 根据列 key 和启用区域生成 CSSRule selector
+    var getStickyColsSelector = function (key, areas) {
+      var selectors = [];
+
+      layui.each(areas, function (area, enabled) {
+        if (!enabled) return;
+        selectors.push(
+          '.' +
+            ELEM_HAS_STICKY +
+            ' ' +
+            STICKY_COLS_AREA_TAGS[area] +
+            '[data-key="' +
+            key +
+            '"]'
+        );
+      });
+
+      return selectors.join(', ');
+    };
+
+    // 每次重算前先清空动态样式，避免隐藏列或方向变化后残留旧偏移
+    var resetStickyRule = function (rule) {
+      rule.style.removeProperty('position');
+      rule.style.removeProperty('left');
+      rule.style.removeProperty('right');
+      rule.style.removeProperty('z-index');
+      rule.style.removeProperty('box-shadow');
+    };
+
+    // 将配置了 fixed 的列应用为 sticky 固定列
+    var applyStickyCols = function (tableIns, options) {
+      if (!stickyPosition) return;
+
+      // 深合并，保证调用方只覆盖局部配置时不丢失默认 areas
+      options = $.extend(true, {}, STICKY_COLS_OPTIONS, options);
+
+      var scrollElem = tableIns.layMain;
+      var tableElem = scrollElem.children('table');
+      var style = tableIns.elem.children('style')[0];
+      var rules = tableIns.stickyColsRules || {};
+      var outWidth = tableElem.outerWidth() - scrollElem.width();
+      var enableLeft =
+        options.left === true || (options.left === 'overflow' && outWidth > 0);
+      var enableRight =
+        options.right === true ||
+        (options.right === 'overflow' && outWidth > 0);
+      var left = 0;
+      // 右侧偏移需要预留滚动条补丁宽度，避免覆盖 layui-table-patch
+      var right = tableIns.getScrollWidth(scrollElem[0]);
+      var leftFixed = [];
+      var rightFixed = [];
+
+      if (!style) return;
+
+      // CSSRule 只在首次执行时建立索引，后续直接按 selector 查找规则
+      if (!tableIns.stickyColsRules) {
+        lay.getStyleRules(style, function (rule) {
+          rules[rule.selectorText] = rule;
+        });
+        tableIns.stickyColsRules = rules;
+      }
+
+      // 清理本实例内所有 sticky 动态规则，保证重算结果是完整状态
+      layui.each(rules, function (selector, rule) {
+        if (selector.indexOf('.' + ELEM_HAS_STICKY) !== -1) {
+          resetStickyRule(rule);
+        }
+      });
+
+      // 只给启用的区域添加容器类，selector 才会真正命中对应 th/td
+      layui.each(STICKY_COLS_AREAS, function (area, selector) {
+        var enabled = !!options.areas[area] && (enableLeft || enableRight);
+        tableIns.elem.find(selector).toggleClass(ELEM_HAS_STICKY, enabled);
+      });
+
+      if (!enableLeft && !enableRight) return;
+
+      // 只统计可见叶子列，隐藏列和非 fixed 列不参与 offset 计算
+      tableIns.eachCols(function (i, item) {
+        if (item.hide || !item.fixed) return;
+        if (item.fixed === 'right') {
+          // 右固定列需要从最右侧向左累计，因此倒序存放
+          rightFixed.unshift(item);
+        } else {
+          leftFixed.push(item);
+        }
+      });
+
+      if (enableLeft) {
+        layui.each(leftFixed, function (i, item) {
+          var rule = rules[getStickyColsSelector(item.key, options.areas)];
+          if (rule) {
+            rule.style.position = stickyPosition;
+            rule.style.left = left + 'px';
+            rule.style.right = 'auto';
+            rule.style.zIndex = 102;
+          }
+          left += item.width || 0;
+        });
+        if (leftFixed.length) {
+          // 左侧最后一个固定列负责显示右向阴影
+          var leftRule =
+            rules[
+              getStickyColsSelector(
+                leftFixed[leftFixed.length - 1].key,
+                options.areas
+              )
+            ];
+          if (leftRule) {
+            leftRule.style.boxShadow = '1px 0 8px rgba(0, 0, 0, 0.08)';
+            leftRule.style.zIndex = 103;
+          }
+        }
+      }
+
+      if (enableRight) {
+        layui.each(rightFixed, function (i, item) {
+          var rule = rules[getStickyColsSelector(item.key, options.areas)];
+          if (rule) {
+            rule.style.position = stickyPosition;
+            rule.style.right = right + 'px';
+            rule.style.left = 'auto';
+            rule.style.zIndex = 102;
+          }
+          right += item.width || 0;
+        });
+        if (rightFixed.length) {
+          // 右侧最靠左的固定列负责显示左向阴影
+          var rightRule =
+            rules[
+              getStickyColsSelector(
+                rightFixed[rightFixed.length - 1].key,
+                options.areas
+              )
+            ];
+          if (rightRule) {
+            rightRule.style.boxShadow = '-1px 0 8px rgba(0, 0, 0, 0.08)';
+            rightRule.style.zIndex = 103;
+          }
+        }
+      }
+    };
+
+    // 高频场景下合并 sticky 刷新，主要用于拖拽列宽过程
+    var requestStickyCols = function (tableIns, options) {
+      var rAF =
+        window.requestAnimationFrame ||
+        function (fn) {
+          return setTimeout(fn, 1000 / 60);
+        };
+
+      if (tableIns.stickyColsTimer) {
+        tableIns.stickyColsOptions = options;
+        return;
+      }
+      tableIns.stickyColsOptions = options;
+      tableIns.stickyColsTimer = rAF(function () {
+        var opts = tableIns.stickyColsOptions;
+        tableIns.stickyColsTimer = null;
+        tableIns.stickyColsOptions = null;
+        applyStickyCols(tableIns, opts);
+      });
+    };
+
     var resizeObserver = lay.createSharedResizeObserver(MOD_NAME);
 
     /**
@@ -799,6 +1006,14 @@ layui.define(
             ''
           );
           text.push('.laytable-cell-' + key + '{' + val + '}');
+          if (item2.fixed) {
+            // sticky 规则只为固定列生成，避免普通列增加无用 CSSRule
+            var selector = getStickyColsSelector(
+              key,
+              STICKY_COLS_OPTIONS.areas
+            );
+            selector && text.push(selector + '{background-color: inherit;}');
+          }
         });
       });
 
@@ -1358,6 +1573,7 @@ layui.define(
       }
 
       that.setGroupWidth();
+      applyStickyCols(that);
     };
 
     // 重置表格尺寸/结构
@@ -2133,6 +2349,7 @@ layui.define(
             (patchElem.length ? patchElem.get(0).outerHTML : '') +
             '</tr>'
         );
+      applyStickyCols(that);
     };
 
     //找到对应的列元素
@@ -2588,6 +2805,7 @@ layui.define(
 
       // 操作栏
       that.layFixRight.css('right', scrollWidth);
+      applyStickyCols(that);
     };
 
     /**
@@ -2847,6 +3065,7 @@ layui.define(
 
                 dict.rule.style.width = setWidth + 'px';
                 thatTable.setGroupWidth(thisTable.eventMoveElem);
+                requestStickyCols(thatTable);
                 layer.close(that.tipsIndex);
               }
             }

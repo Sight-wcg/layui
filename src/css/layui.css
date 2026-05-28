@@ -3335,10 +3335,17 @@ hr.layui-border-black {
 .layui-table tr {
   -webkit-transition: all 0.3s;
   transition: all 0.3s;
+  background-color: #fff;
 }
 .layui-table th {
   text-align: left;
   font-weight: 600;
+}
+.layui-table-has-sticky .layui-table-patch {
+  position: sticky;
+  right: 0;
+  left: auto;
+  background-color: inherit;
 }
 
 .layui-table-mend {
